@@ -9,7 +9,7 @@
 source("loss-functions.R")
 source("gen-synthethic-data.R")
 source("gradient-descent.R")
-source("diff-priv-gradient-descent.R")
+source("stochastic-gradient-descent.R")
 
 # Generate sample data
 library(e1071)
