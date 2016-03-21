@@ -43,13 +43,13 @@ test.gen.synthetic.data <- function()
   model <- gradient.descent(data)
   df.results <- data.frame(maxit=model$params$maxit, theta.1=model$best$theta[[1]],
                            theta.2=model$best$theta[[2]], loss=model$best$loss)
+  model <- gradient.descent(data, maxit=1000)
+  df.results <- rbind(df.results, data.frame(maxit=model$params$maxit, theta.1=model$best$theta[[1]],
+                                             theta.2=model$best$theta[[2]], loss=model$best$loss))
+  model <- gradient.descent(data, maxit=2000)
+  df.results <- rbind(df.results, data.frame(maxit=model$params$maxit, theta.1=model$best$theta[[1]],
+                                             theta.2=model$best$theta[[2]], loss=model$best$loss))
   model <- gradient.descent(data, maxit=5000)
-  df.results <- rbind(df.results, data.frame(maxit=model$params$maxit, theta.1=model$best$theta[[1]],
-                                             theta.2=model$best$theta[[2]], loss=model$best$loss))
-  model <- gradient.descent(data, maxit=20000)
-  df.results <- rbind(df.results, data.frame(maxit=model$params$maxit, theta.1=model$best$theta[[1]],
-                                             theta.2=model$best$theta[[2]], loss=model$best$loss))
-  model <- gradient.descent(data, maxit=50000)
   df.results <- rbind(df.results, data.frame(maxit=model$params$maxit, theta.1=model$best$theta[[1]],
                                              theta.2=model$best$theta[[2]], loss=model$best$loss))
   df.results
