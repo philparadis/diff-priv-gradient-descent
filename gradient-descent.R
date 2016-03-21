@@ -88,7 +88,7 @@ gradient.descent <- function
                ", sample.method = ", sample.method, "\n"))
   }
   
-  ### 1. Initialization phase
+  ### 1. Initialization of initial theta arbitrarily
   theta <- runif(dim, -1, 1)
   learning.rate <- eta0
   
@@ -104,9 +104,11 @@ gradient.descent <- function
   ### 2. Main loop
   for (t in 1:maxit)
   {
-    ## (a) This is Algorithm 1.2, so we pick a random subset of B distinct
-    ## elements out of the dataset
+    ## (a) Pick a subset of B different data points by specifying a vector of
+    ## indices for x_{j_1}, ..., x_{j_B}
     if (sample.method == "ordered") {
+      ## This is the method from Algorithm 1.1, so we pick the indices
+      ## deterministically, in order.
       if (t == 1) {
         indices.j <- 1:B
       } else {
@@ -114,6 +116,8 @@ gradient.descent <- function
         indices.j <- ((indices.j - 1 + B) %% n) + 1
       }
     } else {
+      ## This is the method from Algorithm 1.2, so we pick a random subset of
+      ## B distinct elements out of the dataset
       indices.j <- sample(n, B, replace = FALSE)
     }
     
