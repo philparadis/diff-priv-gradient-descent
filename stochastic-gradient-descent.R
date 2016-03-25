@@ -3,7 +3,7 @@
 source("loss-functions.R")
 
 # Helper function used when verbose = "debug"
-print.debug.grad.info <- function(t, loss, dim, grad, delta)
+print.debug.stochastic.grad.info <- function(t, maxit, loss, dim, grad, rand.Z, delta, print.as.matrix = FALSE)
 {
   # Also print gradient values and delta values
   if (dim <= 5) {
@@ -13,9 +13,14 @@ print.debug.grad.info <- function(t, loss, dim, grad, delta)
     sub <- 1:5
     extra <- ", ..."
   }
-  cat(paste0("Step ", t, ": ", loss,
-             "  grad = c(", paste0(signif(grad[sub], 3), collapse=", "), extra, ")",
-             "  delta = c(", paste0(signif(delta[sub], 3), collapse=", "), extra, ")\n"))
+  cat(paste0("Step, ", format(t, width=nchar(maxit)), ": loss = ", loss, "\n"))
+  if (print.as.matrix == TRUE) {
+    print(cbind(grad, rand.Z, delta))
+  } else {
+    cat(paste0("  grad   = c(", paste0(signif(grad[sub], 3), collapse=", "), extra, ")\n",
+               "  rand.Z = c(", paste0(signif(rand.Z[sub], 3), collapse=", "), extra, ")\n",
+               "  delta  = c(", paste0(signif(delta[sub], 3), collapse=", "), extra, ")\n"))
+  }
 }
 
 VERBOSE.DEBUG <- 0
@@ -23,12 +28,17 @@ VERBOSE.VERBOSE <- 1
 VERBOSE.QUIET <- 2
 VERBOSE.SILENT <- 3
 
+### TODO:
+### The default values of epsilon, delta and especially L were chosen
+### completely randomly and are probably way wrong, bad and horrible.
+### Need to think a bit about how to choose good default values.
+
 stochastic.gradient.descent <- function
 (
   data,
-  epsilon, # Privacy param epsilon
-  delta, # Privacy param delta
-  L, #Lipschitz constant of 'fn.loss'
+  epsilon = 0.05, # Privacy param epsilon
+  delta   = 0.5, # Privacy param delta
+  L       = 10, #Lipschitz constant of 'fn.loss'
   fn.loss = sigmoid.loss.fn, # Function *must* be Lipschitz
   fn.grad = grad.sigmoid.loss.fn,
   maxit = 1000,
@@ -40,7 +50,7 @@ stochastic.gradient.descent <- function
   # Set parameters
   dim <- nrow(data) - 1
   n <- ncol(data)
-  sample.method <- match.arg(sample.method)
+  sample.method <- "random"
   verbose <- match.arg(verbose)
   
   if (verbose == "debug")
@@ -65,7 +75,7 @@ stochastic.gradient.descent <- function
   if (B > n)
   {
     if (verbose.level <= VERBOSE.QUIET) {
-      message(paste0("Batch size B = ", B, ", is larger than the number ",
+      message(paste0("Batch size B = ", B, ", is larger than the number of ",
                      "data points (", n, "), hence setting B = ", n, "."))
     }
     B <- n
@@ -80,14 +90,18 @@ stochastic.gradient.descent <- function
     cat(paste0("Dimension:             ", dim, "\n"))
     cat(paste0("Num points:            ", n, "\n"))
     cat(paste0("Sample method:         ", sample.method, "\n"))
+    cat(paste0("epsilon:               ", epsilon, "\n"))
+    cat(paste0("delta:                 ", delta, "\n"))
+    cat(paste0("Lipschitz constant L:  ", L, "\n"))
     cat(paste0("Max num steps:         ", maxit, "\n"))
     cat(paste0("Batch size:            ", B, "\n"))
     cat(paste0("Initial learning rate: ", eta0, "\n"))
     cat(paste0("Verbose:               ", verbose, "\n"))
   } else if (verbose.level <= VERBOSE.QUIET) {
     cat("Parameters:\n")
-    cat(paste0("D = ", dim, ", n = ", n, ", maxit = ", maxit, ", B = ", B, ", eta0 = ", eta0,
-               ", sample.method = ", sample.method, "\n"))
+    cat(paste0("D = ", dim, ", n = ", n, ", maxit = ", maxit, ", B = ", B,
+               ", eta0 = ", eta0, ", epsilon = ", epsilon, ", delta = ", delta,
+               ", L = ", L, "\nsample.method = ", sample.method, "\n"))
   }
   
   ### 1. Set the privacy parameters (epsilon and delta)
@@ -108,26 +122,60 @@ stochastic.gradient.descent <- function
   if (Discrim >= tol) {
     # The discriminant is positive, so we have two roots
     SqDiscrim <- sqrt(Discrim)
-    epsilon.0 <- (-b + SqDiscrim) / (2*a)
-    epsilon.1 <- (-b - SqDiscrim) / (2*a)
+    root.1 <- (-b + SqDiscrim) / (2*a)
+    root.2 <- (-b - SqDiscrim) / (2*a)
     
-    check.0 <- epsilon.0/(2*log(2/delta))
-    check.1 <- epsilon.1/(2*log(2/delta))
-    if (check.1 < check.0) {
-      epsilon.0 <- epsilon.1
-      check.0 <- check.1
+    root.check.1 <- root.1/(2*log(2/delta))
+    root.check.2 <- root.2/(2*log(2/delta))
+    
+    if (verbose.level <= VERBOSE.VERBOSE) {
+      cat("Found 2 roots of the epsilon.0 quadratic equation, giving two possible values for epsilon.0.\n")
+      cat(paste0("  root.1 = ", root.1, " root.check.1 = ", root.check.1, "\n",
+                 "  root.2 = ", root.2, " root.check.2 = ", root.check.2, "\n"))
     }
+  
+    if (root.1 < 0 && root.2 >= 0) {
+      if (verbose.level <= VERBOSE.VERBOSE) {
+        cat(paste0("Since root.1 < 0 and root.2 >= 0, we need to set epsilon.0 to root.2\n"))
+      }
+      epsilon.0 <- root.2
+      check.0 <- root.check.2
+    } else if (root.1 >= 0 && root.2 < 0) {
+      epsilon.0 <- root.1
+      check.0 <- root.check.1
+    } else if (root.1 >= 0 && root.2 >= 0) {
+      stop("TODO: We have two valid epsilon.0 roots. Not sure which one to select yet.")
+      # if (root.check.2 < root.check.1) {
+      #   root.1 <- root.2
+      #   root.check.1 <- root.check.2
+      #   if (verbose.level <= VERBOSE.VERBOSE) {
+      #     cat("Selecting root.2 as epsilon.0\n")
+      #   }
+      # } else {
+      #   if (verbose.level <= VERBOSE.VERBOSE) {
+      #     cat("Selecting root.1 as epsilon.0\n")
+      #   }
+      # }
+    } else {
+      stop("ERROR: Both epsilon.0 roots are negative. Please check your input parameters.")
+    }
+    epsilon.0 <- root.1
+    check.0 <- root.check.1
   } else if (abs(Discrim) < tol) {
     # Assume the discriminant is zero, so we have a single root
     epsilon.0 <- -b / (2*a)
     check.0 <- epsilon.0/(2*log(2/delta))
+    
+    if (verbose.level <= VERBOSE.DEBUG) {
+      cat("Found a single root of the epsilon.0 quadratic equation, giving a single possible value.\n")
+    }
   } else {
     # Assume the discriminant is negative, so we have complex roots
-    stop("ERROR: Still haven't implemented  the case where epsilon.0 is a complex number")
+    stop("ERROR: The solutions for epsilon.0 are complex-valued numbers. We haven't implemented this case. TODO: Does this case even make any sense?")
   }
   
   if (check.0 > 1) {
-    stop(paste0("ERROR: The constrain on \"epsilon_0/(2*log(2/delta)) <= 1",
+    stop(paste0("ERROR: The constrain on \"epsilon.0/(2*log(2/delta)) <= 1",
                 "\" could not be satisfied as it equaled: ", check.0))
   }
   
@@ -136,10 +184,31 @@ stochastic.gradient.descent <- function
   ###    gradient in step 4 (c))
   
   sigma.squared <- (2*L/B)^2 * 2 * log((5/4)*(2/delta))/epsilon.0
+  if (sigma.squared < 0) {
+    stop(paste0("ERROR: variance = sigma^2 = ", sigma.squared, ", which is negative.\n",
+                "TODO: Decide what to do here:\n",
+                "    A) Set variance to 0,\n",
+                "    B) Take the absolute value of the variance,\n",
+                "    C) Figure out what is wrong from the value(s) of epsilon, delta or L.\n",
+                "    D) Other ideas? :)\n"))
+  }
+                
   # In practice, we only need the standard deviation, so we compute it
   # only once now.
   std.dev <- sqrt(abs(sigma.squared))
   
+  if (verbose.level <= VERBOSE.VERBOSE) {
+    cat("Calculating privacy parameters...")
+    cat(paste0("epsilon.0 = ", epsilon.0, "\n"))
+  }
+  if (verbose.level <= VERBOSE.DEBUG) {
+    cat(paste0("Constraint epsilon.0/(2*log(2/delta)) = ", check.0, " <= 1\n"))
+  }
+  if (verbose.level <= VERBOSE.QUIET) {
+    cat(paste0("Privacy parameter: sigma^2 = ", sigma.squared,
+               " (equivalently, standard deviation = ", std.dev, ")\n"))
+  }
+
   ### 3. Initialization of initial theta arbitrarily
   theta <- runif(dim, -1, 1)
   learning.rate <- eta0
@@ -149,7 +218,7 @@ stochastic.gradient.descent <- function
   loss.init.theta <- theta
   loss.init.step <- 1
   loss.best <- loss.init
-  loss.best.theta <- NULL
+  loss.best.theta <- theta
   loss.best.step <- 1
   loss.last <- loss.init
   
@@ -161,7 +230,7 @@ stochastic.gradient.descent <- function
     indices.j <- sample(n, B, replace = FALSE)
 
     if (verbose.level <= VERBOSE.DEBUG) {
-      cat(paste0("Step ", t, ": Batch indices (j_1 to j_", B, ") = ", 
+      cat(paste0("Step, ", format(t, width=nchar(maxit)), ": Batch indices (j_1 to j_", B, ") = ", 
                  paste0(indices.j, collapse = ", "), "\n"))
     }
     
@@ -192,12 +261,16 @@ stochastic.gradient.descent <- function
         (verbose.level <= VERBOSE.QUIET && (t == 1 || t == maxit || t %% ceiling(maxit/10) == 0)))
     {
       if (verbose.level <= VERBOSE.DEBUG) {
-        # Print full grad and delta vectors... can get messy...
-        print.debug.grad.info(t, loss, dim, grad, delta)
+        # Print full grad, rand.Z and delta vectors... can get messy...
+        print.debug.stochastic.grad.info(t, maxit, loss, dim, grad, rand.Z, delta, TRUE)
       } else if (verbose.level <= VERBOSE.VERBOSE) {
         # Print step #, current loss and average grad and delta values
-        cat(paste0("Step ", t, ": ", loss, " (avg. |grad| = ", mean(abs(grad)),
-                   ", avg. |delta| = ", mean(abs(delta)), ")\n"))
+        print.debug.stochastic.grad.info(t, maxit, loss, dim, grad, rand.Z, delta, FALSE)
+      } else if (verbose.level <= VERBOSE.QUIET) {
+        cat(paste0("Step ", format(t, width=nchar(maxit)), ": ",loss,
+                   " (||grad|| = ", signif(sqrt(sum(grad^2)), 6),
+                   ", ||delta|| = ", signif(sqrt(sum(delta^2)), 6),
+                   ", ||rand.Z|| = ", signif(sqrt(sum(rand.Z^2)), 6), ")\n"))
       } else {
         # Just print step # and current loss
         cat(paste0("Step ", format(t, width=nchar(maxit)), ": loss = ", loss, "\n"))
@@ -245,6 +318,12 @@ stochastic.gradient.descent <- function
                                  B = B,
                                  eta0 = eta0,
                                  verbose = verbose),
+                   privacy.params = list(epsilon = epsilon,
+                                         delta = delta,
+                                         L = L,
+                                         epsilon.0 = epsilon.0,
+                                         sigma.squared = sigma.squared,
+                                         std.dev = std.dev),
                    df.results = df.results)
   #class(my.model) <- "stochastic.gradient.descent"
   return(my.model)
