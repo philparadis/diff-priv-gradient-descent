@@ -3,7 +3,7 @@
 source("loss-functions.R")
 
 # Helper function used when verbose = "debug"
-print.debug.grad.info <- function(t, loss, dim, grad, delta)
+print.debug.grad.info <- function(t, maxit, loss, dim, grad, delta, print.as.matrix = FALSE)
 {
   # Also print gradient values and delta values
   if (dim <= 5) {
@@ -13,9 +13,13 @@ print.debug.grad.info <- function(t, loss, dim, grad, delta)
     sub <- 1:5
     extra <- ", ..."
   }
-  cat(paste0("Step ", t, ": ", loss,
-             "  grad = c(", paste0(signif(grad[sub], 3), collapse=", "), extra, ")",
-             "  delta = c(", paste0(signif(delta[sub], 3), collapse=", "), extra, ")\n"))
+  cat(paste0("Step, ", format(t, width=nchar(maxit)), ": loss = ", loss, "\n"))
+  if (print.as.matrix == TRUE) {
+    print(cbind(grad, delta))
+  } else {
+    cat(paste0("  grad   = c(", paste0(signif(grad[sub], 3), collapse=", "), extra, ")\n",
+               "  delta  = c(", paste0(signif(delta[sub], 3), collapse=", "), extra, ")\n"))
+  }
 }
 
 VERBOSE.DEBUG <- 0
@@ -63,7 +67,7 @@ gradient.descent <- function
   if (B > n)
   {
     if (verbose.level <= VERBOSE.QUIET) {
-      message(paste0("Batch size B = ", B, ", is larger than the number ",
+      message(paste0("Batch size B = ", B, ", is larger than the number of ",
                      "data points (", n, "), hence setting B = ", n, "."))
     }
     B <- n
@@ -97,7 +101,7 @@ gradient.descent <- function
   loss.init.theta <- theta
   loss.init.step <- 1
   loss.best <- loss.init
-  loss.best.theta <- NULL
+  loss.best.theta <- theta
   loss.best.step <- 1
   loss.last <- loss.init
   
@@ -122,7 +126,7 @@ gradient.descent <- function
     }
     
     if (verbose.level <= VERBOSE.DEBUG) {
-      cat(paste0("Step ", t, ": Batch indices (j_1 to j_", B, ") = ", 
+      cat(paste0("Step ", format(t, width=nchar(maxit)), ": Batch indices (j_1 to j_", B, ") = ", 
                  paste0(indices.j, collapse = ", "), "\n"))
     }
     
@@ -149,10 +153,10 @@ gradient.descent <- function
     {
       if (verbose.level <= VERBOSE.DEBUG) {
         # Print full grad and delta vectors... can get messy...
-        print.debug.grad.info(t, loss, dim, grad, delta)
+        print.debug.grad.info(t, maxit, loss, dim, grad, delta)
       } else if (verbose.level <= VERBOSE.VERBOSE) {
         # Print step #, current loss and average grad and delta values
-        cat(paste0("Step ", t, ": ", loss, " (avg. |grad| = ", mean(abs(grad)),
+        cat(paste0("Step ", format(t, width=nchar(maxit)), ": ", loss, " (avg. |grad| = ", mean(abs(grad)),
                    ", avg. |delta| = ", mean(abs(delta)), ")\n"))
       } else {
         # Just print step # and current loss
