@@ -1,4 +1,8 @@
-# Algorithm 1.1: Fully deterministic
+### This file defines the function 'gradient-descent-, which can handle both
+### Algorithm 1.1 (Fully deterministic gradient descent) and Algorithm 1.2
+### (Gradient descent with uniformly random batching)
+### The Algorithm 1.1 is used by default and Algorithm 1.2 is used by
+### passing the argument sample.method = "random" to the function.
 
 source("loss-functions.R")
 

@@ -1,4 +1,4 @@
-# Algorithm 2: Stochastic Gradient Descent
+### Algorithm 2: Differentially Private Stochastic Gradient Descent
 
 source("loss-functions.R")
 
@@ -196,17 +196,15 @@ stochastic.gradient.descent <- function
   # In practice, we only need the standard deviation, so we compute it
   # only once now.
   std.dev <- sqrt(abs(sigma.squared))
-  
+
   if (verbose.level <= VERBOSE.VERBOSE) {
-    cat("Calculating privacy parameters...")
-    cat(paste0("epsilon.0 = ", epsilon.0, "\n"))
-  }
-  if (verbose.level <= VERBOSE.DEBUG) {
-    cat(paste0("Constraint epsilon.0/(2*log(2/delta)) = ", check.0, " <= 1\n"))
+    cat("Constraint on privacy parameters is:\n")
+    cat(paste0("   epsilon.0/(2*log(2/delta)) = ", check.0, " <= 1\n"))
   }
   if (verbose.level <= VERBOSE.QUIET) {
-    cat(paste0("Privacy parameter: sigma^2 = ", sigma.squared,
-               " (equivalently, standard deviation = ", std.dev, ")\n"))
+    cat(paste0("Privacy parameters:\n", "epsilon.0 = ", epsilon.0, "\n",
+               "sigma^2 = ", sigma.squared,
+               " (or std.dev = ", std.dev, ")\n"))
   }
 
   ### 3. Initialization of initial theta arbitrarily

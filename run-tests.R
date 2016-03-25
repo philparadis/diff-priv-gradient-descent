@@ -62,6 +62,7 @@ test.gen.synthetic.data <- function()
 test.gradient.descent <- function()
 {
   ### Test Algorithm 1.1 (deterministic ordered batch sampling)
+  ### Just testing output of different verbose levels
   theta.1 <- c(1,0,-1)
   data.bin.1 <- gen.synthetic.data.binary.labels(50, theta.1, seed = 0)
   loss.bin.1 <- sigmoid.loss.fn(theta.1, data.bin.1)
@@ -78,7 +79,7 @@ test.gradient.descent <- function()
   model <- gradient.descent(data.bin.1, B=15, maxit=50, verbose="debug", sample.method="random")
   print(round(cbind(Target=c(theta.1, loss.bin.1, NA), model$df.results), 8))
   
-  ### Test with continuous datasets
+  ### Test Algorithm 1.1 and Algorithm 1.2 each on the same datasets with real-valued labels
   data.cont.1 <- gen.synthetic.data.continous.labels(50, theta.1, seed = 0)
   loss.cont.1 <- sigmoid.loss.fn(theta.1, data.cont.1)
   model <- gradient.descent(data.cont.1, B=15, maxit=50, verbose="quiet")
@@ -103,11 +104,15 @@ test.gradient.descent <- function()
   print(round(cbind(Target=c(theta.3, loss.cont.3, NA), model$df.results), 8))
 }
 
+################################################
+### Test stochastic-gradient-descent.R
+################################################
 
 test.stochastic.gradient.descent <- function()
 {
   ### Test Algorithm 2: Stochastic Gradient Descent, with binary labels 
-  theta.1 <- c(1,0,-1)
+  ## Testing different verbose levels
+  theta.1 <- c(1, 0, -1)
   data.bin.1 <- gen.synthetic.data.binary.labels(50, theta.1, seed = 0)
   loss.bin.1 <- sigmoid.loss.fn(theta.1, data.bin.1)
   model <- stochastic.gradient.descent (data.bin.1, B=15, maxit=50, verbose="silent")
@@ -115,12 +120,20 @@ test.stochastic.gradient.descent <- function()
   model <- stochastic.gradient.descent (data.bin.1, B=15, maxit=50, verbose="quiet")
   print(round(cbind(Target=c(theta.1, loss.bin.1, NA), model$df.results), 8))
   model <- stochastic.gradient.descent (data.bin.1, B=15, maxit=50, verbose="verbose")
-  print(round(cbind(Target=c(theta.1, loss.bom.1, NA), model$df.results), 8))
+  print(round(cbind(Target=c(theta.1, loss.bin.1, NA), model$df.results), 8))
   model <- stochastic.gradient.descent (data.bin.1, B=15, maxit=50, verbose="debug")
   print(round(cbind(Target=c(theta.1, loss.bin.1, NA), model$df.results), 8))
   
+  ## Testing Algorithm 2 with a simple case with binary labels
+  theta.2 <- c(-1)
+  data.bin.2 <- gen.synthetic.data.binary.labels(10, theta.2, seed = 0)
+  loss.bin.2 <- sigmoid.loss.fn(theta.2, data.bin.2)
+  model <- stochastic.gradient.descent(data.bin.2, maxit=50)
+  print(round(cbind(Target=c(theta.2, loss.bin.2, NA), model$df.results), 8))
+  
   
   ### Test Algorithm 2: Stochastic Gradient Descent, with real-valued labels
+  theta.1 <- c(1, 0, -1)
   data.cont.1 <- gen.synthetic.data.continous.labels(50, theta.1, seed = 0)
   loss.cont.1 <- sigmoid.loss.fn(theta.1, data.cont.1)
   model <- stochastic.gradient.descent(data.cont.1, B=15, maxit=50, verbose="quiet")
